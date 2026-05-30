@@ -272,9 +272,9 @@ class TestListNameExtraction:
         )
         
         parser = MailkeeperParser()
-        
-        with pytest.raises(MailkeeperParseException):
-            parser.parse_file(str(test_file))
+        result = parser.parse_file(str(test_file))
+
+        assert result["list_name"] == "test_list@example"
 
 
 class TestFileEncoding:

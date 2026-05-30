@@ -158,6 +158,7 @@ class MailkeeperParser:
         Extract distribution list name from MAILINGLIST directive.
         
         Expected format: MAILINGLIST distribution.list.name@domain.org
+        or bare MAILINGLIST (falls back to source file name).
         
         Returns:
             Distribution list name
@@ -171,6 +172,8 @@ class MailkeeperParser:
                 parts = line.split(maxsplit=1)
                 
                 if len(parts) < 2:
+                    if self.file_path is not None:
+                        return self.file_path.stem
                     raise MailkeeperParseException(
                         "MAILINGLIST directive missing list name"
                     )
@@ -178,6 +181,8 @@ class MailkeeperParser:
                 list_name = parts[1].strip()
                 
                 if not list_name:
+                    if self.file_path is not None:
+                        return self.file_path.stem
                     raise MailkeeperParseException(
                         "MAILINGLIST directive has empty list name"
                     )
