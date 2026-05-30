@@ -110,14 +110,56 @@ STEP 4: Build MS Graph API Integration Module (depends on 1)
 - Error handling and retry logic
 - Rate limiting compliance
 
+STEP 4.5: MS365 Credential Configuration (depends on 4)
+-------------------------------------------------------
+Secure credential file loading for MS Graph API authentication.
+
+Credential Requirements:
+- Azure AD Tenant ID (Directory ID): Unique identifier for Azure AD tenant (GUID format)
+- Azure AD Application ID (Client ID): Identifier of registered Azure AD app (GUID format)
+- MS365 Domain: Organization domain name (e.g., cbcmgroups.org)
+
+credential.json Structure:
+{
+  "credentials": {
+    "tenant_id": "12345678-1234-1234-1234-123456789012",
+    "client_id": "87654321-4321-4321-4321-210987654321",
+    "ms365_domain": "cbcmgroups.org"
+  }
+}
+
+Key Features:
+- User imports credential.json via UI button - no hardcoded credentials in code
+- Credentials loaded into memory at runtime, never persisted to disk by application
+- Credential values masked in UI display (show only first 8 chars + *)
+- GUID format validation for tenant_id and client_id
+- Domain format validation for ms365_domain
+- Clear error messages for missing or invalid credentials
+
+Implementation Files:
+- src/utils/credential_loader.py: Load and validate credential.json
+- credential.json.example: Template file for users with field descriptions
+- .gitignore: Include credential*.json to prevent accidental commits
+
+Security Best Practices:
+- Never commit credential files to version control
+- Restrict file permissions (Windows: NTFS permissions; Linux/Mac: chmod 600)
+- Store in secure location, not on shared network drives
+- Each user maintains their own credential file
+- All authentication attempts logged for audit trail
+
 STEP 5: Build Phase 2 - MS365 Export UI (depends on 3, 4)
 ----------------------------------------------------------
 UI Components:
 - "Load JSON" button to import migration file
+- **Credential Management Section:**
+  - "Import MS365 Credentials" button (file browser for credential.json)
+  - Display credential status (Tenant ID*, Client ID*, MS365 Domain, Status indicator)
+  - "Clear Credentials" button (remove from memory)
 - Display summary and list preview
 - Owner email input field: "Distribution List Owner" (required, validated as valid email)
-- "Authenticate with MS365" button (OAuth flow)
-- "Create MS365 Distribution Lists" button (disabled until owner email provided)
+- "Authenticate with MS365" button (OAuth flow, requires credentials loaded)
+- "Create MS365 Distribution Lists" button (disabled until owner email provided, credentials loaded, and authenticated)
 - Progress bar showing creation status
 - Results log: success/failure/skipped for each contact and list (color-coded)
 
@@ -254,6 +296,7 @@ src/services/ms_graph_service.py    - MS Graph API client, OAuth, group operatio
 src/models/migration_data.py        - Data classes for JSON structure
 src/utils/backup_manager.py         - Backup and rollback operations
 src/utils/validator.py              - Email, JSON, file validation
+src/utils/credential_loader.py      - Load and validate credential.json file
 src/config/settings.py              - Configuration constants (MS365 domain, folder paths)
 
 Documentation:
@@ -262,9 +305,11 @@ docs/AZURE_SETUP.md                 - Azure AD app registration guide
 docs/INSTALLATION.md                - Installation guide for end users
 docs/USER_GUIDE.md                  - Complete user manual with screenshots
 docs/TROUBLESHOOTING.md             - Common issues and solutions
+docs/CREDENTIAL_SETUP.md             - Credential.json creation and security guide
 
 Configuration:
 requirements.txt                    - Python dependencies
+credential.json.example             - Template for MS365 credentials (user fills in values)
 .env.example                        - Template for optional config overrides
 VERSION                             - Version number file
 
