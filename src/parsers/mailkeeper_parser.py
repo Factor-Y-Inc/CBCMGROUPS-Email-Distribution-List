@@ -213,7 +213,7 @@ class MailkeeperParser:
                 continue
             
             # Skip directives
-            if any(line.startswith(directive) for directive in self.DIRECTIVES):
+            if line.split(maxsplit=1)[0] in self.DIRECTIVES:
                 continue
             
             # Validate email format
