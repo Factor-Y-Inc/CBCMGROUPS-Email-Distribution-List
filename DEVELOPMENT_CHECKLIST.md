@@ -256,6 +256,106 @@ This checklist breaks down the development into 11 major steps, each with detail
 
 ---
 
+### Step 4.5: MS365 Credential Configuration
+
+**Priority**: High  
+**Estimated Time**: 4 hours  
+**Dependencies**: Step 4
+
+**Overview**: Implement secure credential file loading mechanism. Credentials will NOT be hardcoded in the application. Instead, users will provide a `credential.json` file that the application loads at runtime via a UI import button.
+
+#### Credential Requirements
+
+MS365 migration requires the following credentials for OAuth device code flow authentication:
+
+1. **Azure AD Tenant ID** (Directory ID)
+   - Unique identifier for your Azure AD tenant
+   - Format: GUID (e.g., `12345678-1234-1234-1234-123456789012`)
+   - Where to find: Azure Portal → Azure Active Directory → Overview → Tenant ID
+
+2. **Azure AD Application ID** (Client ID)
+   - Identifier of the registered Azure AD application
+   - Format: GUID (e.g., `87654321-4321-4321-4321-210987654321`)
+   - Where to find: Azure Portal → App registrations → Your App → Application (client) ID
+
+3. **MS365 Domain** (Organization domain)
+   - Your MS365 organization's domain (e.g., `cbcmgroups.org`)
+   - Used to scope all API operations to your organization
+   - Where to find: MS365 Admin Center → Settings → Organization profile → Domain name
+
+#### credential.json Structure
+
+Create a `credential.json` file with the following structure:
+
+```json
+{
+  "credentials": {
+    "tenant_id": "12345678-1234-1234-1234-123456789012",
+    "client_id": "87654321-4321-4321-4321-210987654321",
+    "ms365_domain": "cbcmgroups.org"
+  }
+}
+```
+
+**Field Definitions**:
+- `tenant_id`: Azure AD Tenant ID (required)
+- `client_id`: Azure AD Application ID (required)
+- `ms365_domain`: MS365 organization domain (required)
+
+#### Security Best Practices
+
+**IMPORTANT**: The `credential.json` file contains sensitive information. Follow these security practices:
+
+1. **Never commit to version control**: Add `credential*.json` to `.gitignore`
+2. **Restrict file permissions**: 
+   - On Windows: Use NTFS permissions to restrict to current user only
+   - On Linux/Mac: Use `chmod 600 credential.json` (read/write for owner only)
+3. **Store securely**: Keep credential file in a secure location (not shared network drives)
+4. **Single user per file**: Each user should maintain their own credential file
+5. **Audit trail**: Application logs all authentication attempts (see logs folder)
+
+#### Implementation Tasks
+
+- [ ] Create `src/utils/credential_loader.py` with functions:
+  - [ ] `load_credentials_from_file(file_path)` - Read and validate credential.json
+  - [ ] `validate_credential_file(data)` - Verify all required fields present
+  - [ ] `validate_credentials_with_ms365(credentials)` - Optional: test OAuth flow with provided credentials
+- [ ] Implement credential validation:
+  - [ ] Check file exists
+  - [ ] Parse valid JSON format
+  - [ ] Verify all required fields (tenant_id, client_id, ms365_domain)
+  - [ ] Validate field formats (GUID format for IDs, domain format for ms365_domain)
+  - [ ] Return error messages for missing/invalid fields
+- [ ] Update `MSGraphService` class:
+  - [ ] Accept credentials dictionary in `__init__()`
+  - [ ] Use provided tenant_id and client_id for OAuth instead of hardcoded values
+  - [ ] Use provided ms365_domain for scoping API requests
+- [ ] Create credential file template:
+  - [ ] Create `credential.json.example` in project root
+  - [ ] Include example values and field descriptions
+  - [ ] Add security warnings in comments
+- [ ] Error handling:
+  - [ ] Handle file not found gracefully
+  - [ ] Provide clear error messages for JSON parsing errors
+  - [ ] Validate GUID format for tenant_id and client_id
+  - [ ] Validate domain format for ms365_domain
+- [ ] Create `tests/test_credential_loader.py`
+  - [ ] Test valid credential file loading
+  - [ ] Test missing required fields error handling
+  - [ ] Test invalid JSON format handling
+  - [ ] Test invalid GUID format detection
+  - [ ] Test invalid domain format detection
+
+**Acceptance Criteria**:
+- Credential file loads successfully when all fields valid
+- Clear error messages provided for missing/invalid fields
+- No credentials hardcoded in application code
+- Credential loader is thoroughly tested
+- Example credential.json file provided to users
+- Security best practices documented
+
+---
+
 ### Step 5: Build Phase 2 UI - MS365 Export
 
 **Priority**: High  
@@ -265,17 +365,25 @@ This checklist breaks down the development into 11 major steps, each with detail
 - [ ] Create `src/ui/phase2_widget.py`
 - [ ] Implement `Phase2Widget` class (inherits from QWidget):
   - [ ] "Load Migration JSON" button (from Phase 1 export)
+  - [ ] **Credential Management Section:**
+    - [ ] "Import MS365 Credentials" button (file browser to select credential.json)
+    - [ ] Credential status display showing:
+      - [ ] Tenant ID (masked: show first 8 chars + *)
+      - [ ] Client ID (masked: show first 8 chars + *)
+      - [ ] MS365 Domain (fully visible)
+      - [ ] Status indicator (✓ Loaded or ✗ Not loaded)
+    - [ ] "Clear Credentials" button (remove loaded credentials from memory)
   - [ ] Display migration summary (lists count, emails count, domain)
   - [ ] Owner email configuration section:
     - [ ] Text input for owner email (required)
     - [ ] "Validate Owner" button
     - [ ] Status label (✓ Valid or ✗ Invalid)
-  - [ ] "Authenticate with MS365" button
+  - [ ] "Authenticate with MS365" button (disabled until credentials loaded)
   - [ ] Authentication status display (connected/disconnected)
   - [ ] Migration preview table:
     - [ ] Columns: Original List, MS365 List, Email Count, Owner
     - [ ] Allow editing MS365 list name if needed
-  - [ ] "Start Migration" button (disabled until owner validated and authenticated)
+  - [ ] "Start Migration" button (disabled until owner validated, credentials loaded, and authenticated)
   - [ ] Progress section:
     - [ ] Overall progress bar
     - [ ] Current operation label
