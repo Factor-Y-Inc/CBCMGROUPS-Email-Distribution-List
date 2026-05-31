@@ -159,11 +159,27 @@ class MailkeeperParser:
         
         Expected format: MAILINGLIST distribution.list.name@domain.org
         
+        Fallback handling for bare/empty MAILINGLIST directives:
+        - If MAILINGLIST directive exists but has no value, derives the name from
+          the source filename (stem only, without extension)
+        - This assumes the filename represents a valid distribution list name
+        
+        Examples:
+            "MAILINGLIST badminton@cbcmgroups.org" -> "badminton@cbcmgroups.org"
+            "MAILINGLIST" (bare) -> filename stem (e.g., "badminton@cbcmgroups")
+            File: badminton@cbcmgroups.org -> derived: "badminton@cbcmgroups"
+        
         Returns:
             Distribution list name
             
         Raises:
-            MailkeeperParseException: If MAILINGLIST directive malformed
+            MailkeeperParseException: If MAILINGLIST directive malformed or missing
+            
+        Note:
+            This method assumes the filename (without extension) is a valid 
+            fallback for the distribution list name when the MAILINGLIST 
+            directive is bare or empty. If this assumption is incorrect for 
+            your use case, override this method or add validation before use.
         """
         for line in self.file_content:
             line = line.strip()
@@ -171,16 +187,30 @@ class MailkeeperParser:
                 parts = line.split(maxsplit=1)
                 
                 if len(parts) < 2:
-                    raise MailkeeperParseException(
-                        "MAILINGLIST directive missing list name"
-                    )
+                    # Bare MAILINGLIST directive (no value) - use filename stem
+                    if self.file_path is None:
+                        raise MailkeeperParseException(
+                            "MAILINGLIST directive is bare (no value) and file path is unknown"
+                        )
+                    
+                    fallback_name = self.file_path.stem
+                    # Uncomment next line to enable logging of fallback behavior:
+                    # logger.warning(f"Bare MAILINGLIST in {self.file_path.name}; using filename stem as list name: {fallback_name}")
+                    return fallback_name
                 
                 list_name = parts[1].strip()
                 
                 if not list_name:
-                    raise MailkeeperParseException(
-                        "MAILINGLIST directive has empty list name"
-                    )
+                    # Empty MAILINGLIST value (whitespace only) - use filename stem
+                    if self.file_path is None:
+                        raise MailkeeperParseException(
+                            "MAILINGLIST directive has empty value and file path is unknown"
+                        )
+                    
+                    fallback_name = self.file_path.stem
+                    # Uncomment next line to enable logging of fallback behavior:
+                    # logger.warning(f"Empty MAILINGLIST in {self.file_path.name}; using filename stem as list name: {fallback_name}")
+                    return fallback_name
                 
                 return list_name
         
