@@ -264,7 +264,23 @@ class TestListNameExtraction:
         assert result["list_name"] == "list.name@example.org"
     
     def test_mailinglist_directive_only(self, tmp_path):
-        """Test handling of MAILINGLIST directive without name."""
+        """Test handling of bare MAILINGLIST directive.
+        
+        When the MAILINGLIST directive exists but has no value (bare directive),
+        the parser falls back to using the source filename stem (without extension)
+        as the distribution list name.
+        
+        This behavior assumes the filename represents a valid distribution list name.
+        For example, a file named "badminton@cbcmgroups.org" with a bare MAILINGLIST
+        directive will derive the list name as "badminton@cbcmgroups".
+        
+        Args:
+            tmp_path: Pytest temporary directory fixture
+            
+        Examples:
+            File: "test_list@example.org" with "MAILINGLIST" (bare)
+            Expected list_name: "test_list@example" (extension ".org" removed)
+        """
         test_file = tmp_path / "test_list@example.org"
         test_file.write_text(
             "MAILINGLIST\n"
@@ -274,7 +290,30 @@ class TestListNameExtraction:
         parser = MailkeeperParser()
         result = parser.parse_file(str(test_file))
 
+        # File stem is "test_list@example" (extension ".org" removed)
         assert result["list_name"] == "test_list@example"
+    
+    def test_mailinglist_directive_empty_value(self, tmp_path):
+        """Test handling of MAILINGLIST directive with empty value.
+        
+        When the MAILINGLIST directive exists but contains only whitespace,
+        the parser falls back to using the source filename stem (without extension)
+        as the distribution list name.
+        
+        This is similar to the bare MAILINGLIST case but explicitly handles
+        whitespace-only values.
+        """
+        test_file = tmp_path / "distribution.list@example.org"
+        test_file.write_text(
+            "MAILINGLIST   \n"
+            "user@example.com\n"
+        )
+        
+        parser = MailkeeperParser()
+        result = parser.parse_file(str(test_file))
+
+        # File stem is "distribution.list@example" (extension ".org" removed)
+        assert result["list_name"] == "distribution.list@example"
 
 
 class TestFileEncoding:
