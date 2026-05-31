@@ -1,0 +1,12 @@
+MAILINGLIST distribution.list1@example.org
+# Distribution list for external partners
+# Last updated: 2026-05-30
+
+partner.contact@gmail.com
+client.email@company.com
+external.person@domain.org
+vendor.contact@service.net
+
+# Inactive members (commented out below)
+!ALIAS old.partner@discontinued.com
+!ACCEPT previous.vendor@oldservice.com

@@ -53,7 +53,7 @@ credential*.json
 logs/
 backups/
 exports/
-tempmail/
+/tempmail/
 *.backup
 
 # Testing

@@ -1,0 +1,13 @@
+MAILINGLIST vendor.list@example.org
+
+# Primary vendors
+vendor.support@vendora.com
+info@vendorb.io
+contact@vendorc.co.uk
+
+# Backup contacts
+backup.vendor@vendora.com
+
+# Archived (inactive)
+!ALIAS old.contact@vendord.com
+!ACCEPT legacy.vendor@closed-company.com
