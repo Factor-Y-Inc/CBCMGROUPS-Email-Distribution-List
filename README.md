@@ -300,9 +300,9 @@ The application saves user preferences including:
 
 ### For Users
 - **[Phase 1 Quick Start](docs/guides/PHASE1_QUICKSTART.md)** - Get started with Phase 1 UI
-- **[User Manual](docs/guides/USER_MANUAL.md)** - Complete user guide *(coming soon)*
-- **[Azure Setup Guide](docs/guides/AZURE_SETUP.md)** - Azure AD configuration *(coming soon)*
-- **[Troubleshooting](docs/guides/TROUBLESHOOTING.md)** - Common issues *(coming soon)*
+- User Manual - Complete user guide *(coming soon; see docs/README.md)*
+- Azure Setup Guide - Azure AD configuration *(coming soon; see docs/README.md)*
+- Troubleshooting - Common issues *(coming soon; see docs/README.md)*
 
 ### For Developers
 - **[Development Checklist](docs/development/DEVELOPMENT_CHECKLIST.md)** - Implementation tracking
