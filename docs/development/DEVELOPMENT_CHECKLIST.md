@@ -151,10 +151,15 @@ This checklist breaks down the development into 11 major steps, each with detail
   - [x] "Clear Results" button
 - [x] Implement scanning logic:
   - [x] Recursively find all .org files in selected folder
+  - [x] **Parallel file processing using ThreadPoolExecutor**
+  - [x] **Auto-scaling workers: min(16, max(4, CPU_COUNT × 2))**
   - [x] Parse each file using MailkeeperParser
+  - [x] **Automatically skip phone number distribution lists (7-15 digit pattern)**
   - [x] Filter emails by domain(s)
+  - [x] **Automatically skip empty lists with no matching members**
   - [x] Populate results table
   - [x] Update summary statistics
+  - [x] **Console logging with progress and skip statistics**
 - [x] Generate MS365 naming (append `.ms365` before domain):
   - [x] `distribution.list1@example.org` → `distribution.list1.ms365@example.org`
 - [x] Export JSON structure:
@@ -171,9 +176,18 @@ This checklist breaks down the development into 11 major steps, each with detail
         "original_name": "distribution.list1@example.org",
         "ms365_name": "distribution.list1.ms365@example.org",
         "file_path": "C:/path/to/distribution.list1@example.org",
-        "matched_emails": [...],
+        "matched_emails": ["user_1@gmail.com"],
         "all_members_count": 150,
-        "matched_count": 23
+        "matched_count": 1,
+        "metadata": [
+          {
+            "email": "user_1@gmail.com",
+            "first_name": "user1",
+            "last_name": "gmail",
+            "display_name": "user1 gmail",
+            "description": "External contact - gmail.com"
+          }
+        ]
       }
     ],
     "summary": {...}
@@ -185,11 +199,16 @@ This checklist breaks down the development into 11 major steps, each with detail
 
 **Acceptance Criteria**:
 - ✅ Can select folder and scan .org files
+- ✅ **Parallel processing scans 4000 files in 25-50 seconds**
 - ✅ Domain filtering works correctly
+- ✅ **Phone number lists automatically excluded (7-15 digit pattern)**
+- ✅ **Empty lists automatically skipped (no matches with domain filter)**
+- ✅ **Metadata exported with processed contact names**
 - ✅ Results display accurately in table
 - ✅ JSON export creates valid migration config
 - ✅ UI is responsive during scanning
 - ✅ User preferences persist between sessions
+- ✅ **Console shows detailed progress and skip statistics**
 
 ---
 

@@ -19,6 +19,7 @@ Design documents, requirements, and architecture
 ### 📖 [guides/](guides/)
 User guides, quick starts, and how-to documentation
 - **PHASE1_QUICKSTART.md** - Phase 1 UI quick start guide
+- **FILTERING_RULES.md** - Phase 1 automatic filtering rules and customization
 - Future: AZURE_SETUP.md, USER_MANUAL.md, CREDENTIAL_SETUP.md
 
 ### 🔧 Installer
