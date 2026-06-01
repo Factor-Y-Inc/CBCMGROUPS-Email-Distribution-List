@@ -90,11 +90,11 @@ python src/main.py
    - Register application in Azure AD
    - Configure OAuth permissions
    - Note your Tenant ID and Client ID
-   - See [Azure Setup Guide](docs/AZURE_SETUP.md) for detailed steps
+   - See [Azure Setup Guide](docs/guides/AZURE_SETUP.md) for detailed steps *(coming in Step 9)*
 
 2. **MS365 Credentials**
    - Create `credential.json` with your Azure AD credentials
-   - See [Credential Setup Guide](docs/CREDENTIAL_SETUP.md)
+   - See credential configuration in Step 4.5 *(coming soon)*
 
 3. **Mailkeeper Files**
    - Locate your Mailkeeper directory with distribution list files (.org)
@@ -296,12 +296,19 @@ The application saves user preferences including:
 
 ## Documentation
 
-- **[DEVELOPMENT_CHECKLIST.md](DEVELOPMENT_CHECKLIST.md)** - Detailed implementation steps (for developers)
-- **[logic_requirement.txt](logic_requirement.txt)** - High-level requirements and architecture
-- **[docs/AZURE_SETUP.md](docs/AZURE_SETUP.md)** - Azure AD configuration guide
-- **[docs/CREDENTIAL_SETUP.md](docs/CREDENTIAL_SETUP.md)** - Credential file setup
-- **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** - Complete user manual with screenshots
-- **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+📚 **[Complete Documentation Index](docs/README.md)**
+
+### For Users
+- **[Phase 1 Quick Start](docs/guides/PHASE1_QUICKSTART.md)** - Get started with Phase 1 UI
+- **[User Manual](docs/guides/USER_MANUAL.md)** - Complete user guide *(coming soon)*
+- **[Azure Setup Guide](docs/guides/AZURE_SETUP.md)** - Azure AD configuration *(coming soon)*
+- **[Troubleshooting](docs/guides/TROUBLESHOOTING.md)** - Common issues *(coming soon)*
+
+### For Developers
+- **[Development Checklist](docs/development/DEVELOPMENT_CHECKLIST.md)** - Implementation tracking
+- **[Step Summaries](docs/development/)** - Detailed step-by-step summaries
+- **[Design Documents](docs/design/IMPROVED_IMPLEMENTATION.md)** - Architecture & design decisions
+- **[Requirements](docs/design/logic_requirement.txt)** - Original project requirements
 
 ## Troubleshooting
 
@@ -361,9 +368,9 @@ This project is currently in development. Contributing guidelines coming soon.
 ## Support
 
 For issues or questions:
-1. Check [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
-2. Review [USER_GUIDE.md](docs/USER_GUIDE.md)
-3. Check [AZURE_SETUP.md](docs/AZURE_SETUP.md) for Azure configuration
+1. Check [Phase 1 Quick Start](docs/guides/PHASE1_QUICKSTART.md) for usage guide
+2. Review [Development Checklist](docs/development/DEVELOPMENT_CHECKLIST.md) for project status
+3. See [Documentation Index](docs/README.md) for all available guides
 4. Contact administrator
 
 ## Version History

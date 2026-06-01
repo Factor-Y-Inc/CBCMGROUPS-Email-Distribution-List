@@ -50,6 +50,12 @@ API_TIMEOUT = 30  # seconds
 DEFAULT_ENCODING = "utf-8"
 FALLBACK_ENCODING = "latin-1"
 
+# Scanning Configuration
+# Number of parallel workers for scanning .org files
+# Auto-calculated as: min(MAX_SCAN_WORKERS, max(MIN_SCAN_WORKERS, CPU_COUNT * 2))
+MIN_SCAN_WORKERS = 4
+MAX_SCAN_WORKERS = 16
+
 # Backup Configuration
 BACKUP_COMPRESSION = False  # Set to True to enable ZIP compression
 BACKUP_RETENTION = 10  # Keep last N backups
