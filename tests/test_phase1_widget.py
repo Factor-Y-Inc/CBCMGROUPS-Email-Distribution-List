@@ -4,11 +4,8 @@ Unit tests for Phase 1 Widget (Extract & Analyze)
 
 import pytest
 import sys
-import json
 from pathlib import Path
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtTest import QTest
-from PyQt5.QtCore import Qt
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
