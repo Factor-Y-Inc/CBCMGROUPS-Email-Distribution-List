@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
     QProgressBar, QGroupBox, QMessageBox, QDialog, QTextEdit,
     QHeaderView
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtGui import QFont
 
 from parsers.mailkeeper_parser import MailkeeperParser, MailkeeperParseException
