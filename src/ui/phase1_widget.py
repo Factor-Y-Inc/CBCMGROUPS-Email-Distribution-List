@@ -110,15 +110,15 @@ class ScanWorker(QThread):
                     org_file = future_to_file[future]
                     completed += 1
                     
-                    # Update progress (every 10% or every 100 files for large batches)
-                    if completed % max(1, total_files // 10, 100) == 0 or completed == total_files:
+                    # Update progress (every ~10% or every 100 files for large batches)
+                    update_interval = max(1, min(total_files // 10, 100))
+                    if completed % update_interval == 0 or completed == total_files:
                         print(f"Progress: {completed}/{total_files} ({completed*100//total_files}%)")
-                    
-                    self.progress.emit(
-                        completed, 
-                        total_files, 
-                        f"Processed {completed}/{total_files} files..."
-                    )
+                        self.progress.emit(
+                            completed,
+                            total_files,
+                            f"Processed {completed}/{total_files} files..."
+                        )
                     
                     # Get result
                     try:
