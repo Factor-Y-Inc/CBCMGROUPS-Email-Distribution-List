@@ -126,7 +126,7 @@ class ScanWorker(QThread):
                         if result is not None:
                             results.append(result)
                     except Exception as e:
-                        print(f"⚠️  Error processing {org_file}: {e}")
+                        print(f"Warning: Error processing {org_file}: {e}")
                         continue
             
             # Summary
