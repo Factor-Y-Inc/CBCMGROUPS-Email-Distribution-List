@@ -144,7 +144,7 @@ class ScanWorker(QThread):
             self.finished.emit(results)
             
         except Exception as e:
-            print(f"❌ Fatal error during scan: {e}")
+            print(f"Fatal error during scan: {e}")
             self.error.emit(str(e))
     
     def _generate_ms365_name(self, original_name: str) -> str:
