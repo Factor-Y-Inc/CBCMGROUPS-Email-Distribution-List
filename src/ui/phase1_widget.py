@@ -71,7 +71,7 @@ class ScanWorker(QThread):
             return None
         except Exception as e:
             # Log error but continue with other files
-            print(f"⚠️  Error parsing {org_file.name}: {e}")
+            print(f"Warning: Error parsing {org_file.name}: {e}")
             return None
     
     def run(self):
