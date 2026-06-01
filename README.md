@@ -90,7 +90,7 @@ python src/main.py
    - Register application in Azure AD
    - Configure OAuth permissions
    - Note your Tenant ID and Client ID
-   - See [Azure Setup Guide](docs/guides/AZURE_SETUP.md) for detailed steps *(coming in Step 9)*
+   - See the [Documentation Index](docs/README.md) for Azure setup status *(coming in Step 9)*
 
 2. **MS365 Credentials**
    - Create `credential.json` with your Azure AD credentials
