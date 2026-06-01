@@ -1,0 +1,533 @@
+================================================================================
+CBCMGROUPS EMAIL DISTRIBUTION LIST MIGRATION TOOL
+Mailkeeper → MS365 Migration Requirements
+================================================================================
+
+PROJECT OVERVIEW
+----------------
+Migrate email addresses with specific domains (gmail.com, hotmail.com, etc.) 
+from Mailkeeper distribution lists to MS365, allowing gradual retirement of 
+the private email service while maintaining delivery reliability.
+
+ARCHITECTURE
+------------
+- Python 3.10+ application with PyQt5 GUI
+- MS Graph API for MS365 operations
+- JSON-based migration state tracking
+- Automatic backup and rollback support
+- Standalone Windows installer for easy deployment
+
+================================================================================
+IMPLEMENTATION STEPS
+================================================================================
+
+STEP 1: Setup Project Structure (parallel with step 2)
+-------------------------------------------------------
+- Create Python virtual environment
+- Install dependencies: PyQt5, requests, msal (MS Graph auth)
+- Setup folder structure: src/, config/, backups/, logs/, exports/
+
+STEP 2: Create Mailkeeper Parser Module (parallel with step 1)
+---------------------------------------------------------------
+Parse .org file format:
+- Check for MAILINGLIST directive to identify distribution lists (skip files without it)
+- Extract ONLY plain email addresses (lines without ! prefix)
+- Skip lines starting with ! (!ALIAS, !ACCEPT are commented out/inactive)
+- Skip directive lines (MAILINGLIST, DELAYGREYLIST, NOTSENDER, etc.)
+- Skip commented lines starting with #
+
+Categorize emails by domain to match target domain(s)
+
+Parse email metadata for MS365 contacts:
+- Split email into username and domain
+- First name: Remove all periods from username
+- Last name: Remove all periods from domain, strip TLD (.com/.org/.gov/.net)
+- Display name: {first_name} {last_name}
+- Description: External contact - {original_domain}
+
+Handle edge cases (malformed emails, special characters)
+
+STEP 3: Build Phase 1 - Extract & Analyze UI (depends on 1, 2)
+---------------------------------------------------------------
+UI Components:
+- Domain input field (e.g., "gmail.com") - supports multiple domains comma-separated
+- Folder path selector with browse button (user provides actual Mailkeeper .org files location)
+- "Scan Distribution Lists" button
+- Results table showing: distribution list name, matched email count
+- "Export to JSON" button
+- Save last-used folder path to user preferences for convenience
+
+JSON Structure:
+{
+  "migration_config": {
+    "target_domain": "gmail.com",
+    "scan_date": "ISO timestamp",
+    "mailkeeper_folder": "path",
+    "ms365_domain": "cbcmgroups.org"
+  },
+  "distribution_lists": [
+    {
+      "original_name": "badminton@cbcmgroups.org",
+      "ms365_name": "badminton.ms365@cbcmgroups.org",
+      "file_path": "C:/path/to/mailkeeper/badminton@cbcmgroups.org",
+      "matched_emails": [
+        {
+          "email": "hank.wang@hotmail.com",
+          "first_name": "hankwang",
+          "last_name": "hotmail",
+          "display_name": "hankwang hotmail",
+          "description": "External contact - hotmail.com"
+        },
+        {
+          "email": "alexminglai@gmail.com",
+          "first_name": "alexminglai",
+          "last_name": "gmail",
+          "display_name": "alexminglai gmail",
+          "description": "External contact - gmail.com"
+        }
+      ],
+      "all_members_count": 150,
+      "matched_count": 23
+    }
+  ],
+  "summary": {
+    "total_lists_scanned": 200,
+    "lists_with_matches": 18,
+    "total_emails_to_migrate": 156
+  }
+}
+
+STEP 4: Build MS Graph API Integration Module (depends on 1)
+-------------------------------------------------------------
+- OAuth device code flow for authentication (user-friendly, no pre-registration needed)
+- Create mail contact API call (for external emails with first_name, last_name, display_name, description)
+- Create distribution group API call with owner assignment
+- Add members to group API call (supports both mail contacts and internal users)
+- Check if mail contact already exists (by email address) - return contact ID if exists
+- Check if distribution group already exists (by email address) - return group ID if exists
+- Check if member already in group before adding (avoid duplicate member errors)
+- Validate owner email exists in MS365 organization
+- Error handling and retry logic
+- Rate limiting compliance
+
+STEP 4.5: MS365 Credential Configuration (depends on 4)
+-------------------------------------------------------
+Secure credential file loading for MS Graph API authentication.
+
+Credential Requirements:
+- Azure AD Tenant ID (Directory ID): Unique identifier for Azure AD tenant (GUID format)
+- Azure AD Application ID (Client ID): Identifier of registered Azure AD app (GUID format)
+- MS365 Domain: Organization domain name (e.g., cbcmgroups.org)
+
+credential.json Structure:
+{
+  "credentials": {
+    "tenant_id": "12345678-1234-1234-1234-123456789012",
+    "client_id": "87654321-4321-4321-4321-210987654321",
+    "ms365_domain": "cbcmgroups.org"
+  }
+}
+
+Key Features:
+- User imports credential.json via UI button - no hardcoded credentials in code
+- Credentials loaded into memory at runtime, never persisted to disk by application
+- Credential values masked in UI display (show only first 8 chars + *)
+- GUID format validation for tenant_id and client_id
+- Domain format validation for ms365_domain
+- Clear error messages for missing or invalid credentials
+
+Implementation Files:
+- src/utils/credential_loader.py: Load and validate credential.json
+- credential.json.example: Template file for users with field descriptions
+- .gitignore: Include credential*.json to prevent accidental commits
+
+Security Best Practices:
+- Never commit credential files to version control
+- Restrict file permissions (Windows: NTFS permissions; Linux/Mac: chmod 600)
+- Store in secure location, not on shared network drives
+- Each user maintains their own credential file
+- All authentication attempts logged for audit trail
+
+STEP 5: Build Phase 2 - MS365 Export UI (depends on 3, 4)
+----------------------------------------------------------
+UI Components:
+- "Load JSON" button to import migration file
+- **Credential Management Section:**
+  - "Import MS365 Credentials" button (file browser for credential.json)
+  - Display credential status (Tenant ID*, Client ID*, MS365 Domain, Status indicator)
+  - "Clear Credentials" button (remove from memory)
+- Display summary and list preview
+- Owner email input field: "Distribution List Owner" (required, validated as valid email)
+- "Authenticate with MS365" button (OAuth flow, requires credentials loaded)
+- "Create MS365 Distribution Lists" button (disabled until owner email provided, credentials loaded, and authenticated)
+- Progress bar showing creation status
+- Results log: success/failure/skipped for each contact and list (color-coded)
+
+For each distribution list:
+- Check if distribution group already exists in MS365:
+  - If exists: Skip creation, log "Group already exists", mark as SUCCESS
+  - If not exists: Create new group
+- For each external email:
+  - Check if mail contact exists in MS365
+  - If exists: Skip creation, log "Contact already exists", mark as SUCCESS (already in MS365)
+  - If not exists: Create new mail contact, mark as SUCCESS or ERROR
+- Add all members to group (skip if already member)
+- Track status for each email: SUCCESS, ALREADY_EXISTS, or ERROR
+
+Phase 2 Outputs:
+1. Verification JSON: Contains ONLY emails with status SUCCESS or ALREADY_EXISTS (safe to clean from Mailkeeper)
+2. CSV log: Detailed report with columns: Distribution List, Email, Status, Action, Error Message (if any)
+
+Example CSV Output:
+Distribution List,Email,Status,Action,Error Message
+badminton@cbcmgroups.org,alex@gmail.com,SUCCESS,Created contact,
+badminton@cbcmgroups.org,bob@hotmail.com,ALREADY_EXISTS,Reused existing contact,
+badminton@cbcmgroups.org,carol@yahoo.com,ERROR,Failed to create contact,Invalid email format
+badminton@cbcmgroups.org,GROUP,SUCCESS,Created distribution group,
+awana.parents@cbcmgroups.org,GROUP,ALREADY_EXISTS,Group already exists,
+
+STEP 6: Build Backup and Rollback System (depends on 2)
+--------------------------------------------------------
+- Auto-backup .org files before modification with timestamp
+- Store backups in backups/ folder organized by migration date
+- Rollback function to restore from backup
+- Verification: backup integrity check
+
+STEP 7: Build Phase 3 - Mailkeeper Cleanup UI (depends on 5, 6)
+----------------------------------------------------------------
+UI Components:
+- "Load Verification JSON" (loads Phase 2 verification output, NOT original migration JSON)
+- Display verification summary showing successful vs failed migrations
+- Warn if any errors detected in verification report
+- Preview changes: show before/after for each .org file
+- "Apply Changes" button with confirmation dialog
+- Completion report: file modification log showing which emails were commented out vs left active
+
+For each distribution list:
+- Add {listname}.ms365@cbcmgroups.org as ACTIVE member (routes emails to MS365 group)
+- Prefix successfully migrated emails with !ALIAS (comments them out using Mailkeeper convention)
+- Skip emails that had errors (leave them active in Mailkeeper)
+- Preserve file structure and other directives
+
+Safety: Emails with migration errors remain active in Mailkeeper for retry
+
+STEP 8: Add Validation and Error Handling (depends on 3, 5, 7)
+---------------------------------------------------------------
+- Validate JSON schema before processing
+- Check MS365 connectivity before operations
+- Validate owner email format in Phase 2
+- Verify owner email exists in MS365 organization (via Graph API)
+- Verify distribution list doesn't already exist in MS365
+- Validate email format for all addresses
+- Disk space check before backups
+- Verify user-provided folder path exists and contains valid .org files
+- Permission check for read/write access to Mailkeeper folder
+
+STEP 9: Create Azure AD App Registration Guide (parallel with all steps)
+-------------------------------------------------------------------------
+- Document steps to register app in Azure portal
+- Required API permissions: Group.ReadWrite.All, Directory.ReadWrite.All, OrgContact.ReadWrite.All
+- Generate setup instructions PDF/MD for admins
+
+STEP 10: Testing and Documentation (depends on 8)
+--------------------------------------------------
+- Test with sample data (10-20 distribution lists)
+- Verify rollback functionality
+- Create user manual with screenshots
+- Add inline help tooltips in UI
+- Create troubleshooting guide
+
+STEP 11: Create Installation Package (depends on 10)
+-----------------------------------------------------
+Package Components:
+- Use PyInstaller to create standalone executable
+  - Bundle all dependencies (Python runtime, PyQt5, msal, requests)
+  - Single executable or one-folder distribution
+  - Include application icon
+- Create Windows installer using Inno Setup or NSIS
+  - Installation wizard with license agreement
+  - Choose installation directory
+  - Desktop shortcut creation option
+  - Start menu entry creation
+  - Automatic creation of required folders:
+    - %APPDATA%/CBCMGROUPS-Migration/backups/
+    - %APPDATA%/CBCMGROUPS-Migration/exports/
+    - %APPDATA%/CBCMGROUPS-Migration/logs/
+  - Bundle documentation files:
+    - README.md (converted to HTML/PDF)
+    - Azure setup guide
+    - User manual with screenshots
+    - Troubleshooting guide
+  - Create uninstaller with cleanup options
+- Version numbering system:
+  - Semantic versioning (v1.0.0)
+  - Display version in application About dialog
+  - VERSION file for tracking
+- Testing:
+  - Test installation on clean Windows 10/11 machine (no Python installed)
+  - Test installation with non-admin user
+  - Test uninstallation and cleanup
+  - Verify all shortcuts work
+  - Verify application starts correctly
+- Optional enhancements:
+  - Digital signature for executable (Authenticode)
+  - Auto-update mechanism
+  - MSI installer for enterprise deployment
+
+Build Scripts:
+- installer/build_installer.py - Automated PyInstaller build
+- installer/setup.iss - Inno Setup configuration script
+- installer/build.bat - Windows batch file to run full build process
+
+Deliverables:
+- CBCMGROUPS-Migration-Tool-v1.0.0-Setup.exe (installer)
+- CBCMGROUPS-Migration-Tool-v1.0.0-Portable.zip (portable version, optional)
+- Installation instructions for end users
+
+================================================================================
+FILES TO CREATE
+================================================================================
+
+Application Source:
+src/main.py                         - Entry point, PyQt5 application initialization
+src/ui/main_window.py               - Main window with tabbed interface (Phase 1, 2, 3)
+src/parsers/mailkeeper_parser.py    - Parse .org files, extract distribution lists and members
+src/services/ms_graph_service.py    - MS Graph API client, OAuth, group operations
+src/models/migration_data.py        - Data classes for JSON structure
+src/utils/backup_manager.py         - Backup and rollback operations
+src/utils/validator.py              - Email, JSON, file validation
+src/utils/credential_loader.py      - Load and validate credential.json file
+src/config/settings.py              - Configuration constants (MS365 domain, folder paths)
+
+Documentation:
+README.md                           - User guide and setup instructions
+docs/AZURE_SETUP.md                 - Azure AD app registration guide
+docs/INSTALLATION.md                - Installation guide for end users
+docs/USER_GUIDE.md                  - Complete user manual with screenshots
+docs/TROUBLESHOOTING.md             - Common issues and solutions
+docs/CREDENTIAL_SETUP.md             - Credential.json creation and security guide
+
+Configuration:
+requirements.txt                    - Python dependencies
+credential.json.example             - Template for MS365 credentials (user fills in values)
+.env.example                        - Template for optional config overrides
+VERSION                             - Version number file
+
+Installation/Packaging:
+installer/build_installer.py        - PyInstaller build script
+installer/setup.iss                 - Inno Setup installer script
+installer/icon.ico                  - Application icon (256x256 recommended)
+installer/license.txt               - License agreement text
+installer/build.bat                 - Windows build automation script
+
+================================================================================
+VERIFICATION STEPS
+================================================================================
+
+1. Phase 1 verification: 
+   Run extract on user-provided Mailkeeper folder with "gmail.com", verify JSON 
+   contains correct distribution lists and email counts match manual inspection
+
+2. Phase 2 verification: 
+   Create test MS365 mail contacts and distribution groups, verify in MS365 admin 
+   portal (check contact names, group membership), confirm all members added correctly
+
+3. Phase 3 verification: 
+   Inspect modified .org files, verify comments added correctly, MS365 list added 
+   as ACTIVE member, original structure preserved
+
+4. Backup verification: 
+   Trigger rollback on test migration, verify files restored to original state
+
+5. End-to-end test: 
+   Complete migration for one domain (e.g., "aol.com") with <10 lists, verify 
+   email delivery works through MS365
+
+6. Installation package verification:
+   - Install on clean Windows machine without Python
+   - Verify all shortcuts created correctly
+   - Run application and test all phases
+   - Uninstall and verify cleanup
+   - Test portable version (if created)
+
+================================================================================
+KEY DECISIONS
+================================================================================
+
+Technology:
+- Python 3.10+ with PyQt5 (cross-platform, good library ecosystem)
+- PyInstaller for creating standalone executable
+- Inno Setup for Windows installer
+
+MS365 Authentication:
+- OAuth device code flow (user-friendly, works without pre-configured secrets)
+
+MS365 Naming Convention:
+- Append .ms365 before domain (e.g., badminton.ms365@cbcmgroups.org)
+
+Comment Format:
+- Migrated emails are prefixed with !ALIAS to comment them out (consistent with 
+  Mailkeeper convention)
+- The MS365 distribution list is added as an ACTIVE member (without ! prefix) to 
+  enable email routing
+
+Backup Strategy:
+- Timestamp-based folders, keep indefinitely (user can manually clean)
+
+JSON as State File:
+- Human-readable, version-controllable, easy to edit if needed
+
+Scope:
+- Only process files with MAILINGLIST directive (skip personal aliases)
+
+Email Extraction:
+- Extract ONLY plain email addresses (no prefix)
+- Lines starting with ! (!ALIAS, !ACCEPT) are commented out/inactive and should be skipped
+
+Duplicate Contact Handling:
+- Before creating mail contacts in MS365, check if they already exist
+- If exists, skip creation and reuse existing contact
+- This allows safe re-runs and sharing contacts across distribution lists
+
+Email Parsing for MS365 Contacts:
+- First name: Remove all periods from email username (e.g., hank.wang → hankwang)
+- Last name: Remove all periods from domain part, strip TLD (e.g., hotmail.com → hotmail, fda.hhs.gov → fdahhsgov)
+- Display name: {first_name} {last_name} (e.g., "hankwang hotmail")
+- Description: External contact - {original_domain} (e.g., "External contact - hotmail.com")
+
+Distribution List Ownership:
+- Global owner approach - user specifies one owner email in Phase 2 UI that applies 
+  to all distribution lists created in that session
+- Owner email is validated to exist in MS365 before creation
+
+Idempotent Operations:
+- Tool checks if distribution groups and contacts already exist in MS365 before creation
+- If they exist, skip creation and log as "already exists" with SUCCESS status
+- This allows safe re-runs across different domains
+
+Verification JSON Workflow:
+Phase 2 exports two outputs:
+1. Verification JSON: Contains ONLY emails with SUCCESS or ALREADY_EXISTS status (safe to clean from Mailkeeper)
+2. CSV log: Detailed status report for all emails (Distribution List, Email, Status, Action, Error Message)
+
+Safe Cleanup:
+- Phase 3 uses verification JSON (not original migration JSON) to ensure only 
+  successfully migrated emails are commented out (prefixed with !ALIAS) in Mailkeeper
+- The MS365 distribution list is added as an ACTIVE member to route emails
+- Emails with errors remain active for retry
+
+Deployment Strategy:
+- Create standalone Windows installer using PyInstaller + Inno Setup
+- Bundle all dependencies so MS365 admins can install without Python
+- Include installation wizard, desktop shortcut, Start menu entry, and all documentation
+- No Python or technical knowledge required for installation
+- Portable version option for USB/network deployment
+
+================================================================================
+WORKFLOW EXAMPLE
+================================================================================
+
+Original .org file:
+-------------------
+MAILINGLIST
+NOTSENDER
+alexminglai@gmail.com
+bob@hotmail.com
+carol@yahoo.com
+ann.hsieh@cbcmgroups.org
+
+After Phase 3 cleanup (assuming carol@yahoo.com had migration error):
+----------------------------------------------------------------------
+MAILINGLIST
+NOTSENDER
+badminton.ms365@cbcmgroups.org
+!ALIAS alexminglai@gmail.com
+!ALIAS bob@hotmail.com
+carol@yahoo.com
+ann.hsieh@cbcmgroups.org
+
+Explanation:
+- badminton.ms365@cbcmgroups.org - ADDED as ACTIVE member (routes emails to MS365)
+- alexminglai@gmail.com - MODIFIED: prefixed with !ALIAS (successfully migrated to MS365)
+- bob@hotmail.com - MODIFIED: prefixed with !ALIAS (successfully migrated to MS365)
+- carol@yahoo.com - UNCHANGED: migration had ERROR, remains active (can retry later)
+- ann.hsieh@cbcmgroups.org - UNCHANGED: not a target domain, remains active
+
+Email Delivery Flow:
+--------------------
+When email is sent to badminton@cbcmgroups.org:
+1. Mailkeeper processes the distribution list
+2. Delivers to:
+   - badminton.ms365@cbcmgroups.org → MS365 distribution group → forwards to:
+     - alexminglai@gmail.com
+     - bob@hotmail.com
+   - carol@yahoo.com (direct delivery, still in Mailkeeper)
+   - ann.hsieh@cbcmgroups.org (direct delivery, internal user)
+3. All recipients receive the email successfully
+
+================================================================================
+INSTALLATION WORKFLOW FOR END USERS
+================================================================================
+
+Administrator Installation:
+1. Download CBCMGROUPS-Migration-Tool-v1.0.0-Setup.exe
+2. Run installer (may require administrator privileges)
+3. Follow installation wizard:
+   - Accept license agreement
+   - Choose installation directory (default: C:\Program Files\CBCMGROUPS Migration Tool)
+   - Select components (application, documentation, shortcuts)
+   - Choose Start Menu folder
+   - Select additional tasks (desktop icon, Start Menu entry)
+4. Complete installation
+5. Launch application from:
+   - Desktop shortcut (if selected)
+   - Start Menu > CBCMGROUPS Migration Tool
+   - Installation directory executable
+
+First Run:
+1. Application creates required folders automatically:
+   - %APPDATA%\CBCMGROUPS-Migration\backups\
+   - %APPDATA%\CBCMGROUPS-Migration\exports\
+   - %APPDATA%\CBCMGROUPS-Migration\logs\
+2. User accesses documentation via Help menu
+3. User follows Azure setup guide to configure MS365 app registration
+4. User begins migration process starting with Phase 1
+
+Uninstallation:
+1. Control Panel > Programs and Features > CBCMGROUPS Migration Tool > Uninstall
+   OR Start Menu > CBCMGROUPS Migration Tool > Uninstall
+2. Choose to keep or delete user data (backups, exports, logs)
+3. Complete uninstallation
+
+================================================================================
+FURTHER CONSIDERATIONS
+================================================================================
+
+1. Incremental migration tracking: 
+   Should the tool track which domains have been fully migrated to prevent 
+   duplicate operations? 
+   Recommendation: Add migration history log (JSON) to track completed domains and dates
+
+2. MS365 group type: 
+   Should these be Distribution Lists or Microsoft 365 Groups (with Teams integration)? 
+   Recommendation: Use Distribution Lists (mail-enabled security groups) for 
+   simplicity unless collaboration features needed
+
+3. Email validation level: 
+   Should the tool validate that emails still exist/are active before migration? 
+   Recommendation: Optional validation via MS Graph API (check if external user, 
+   skip validation for now to keep scope manageable)
+
+4. Multi-platform support:
+   Should the tool support macOS and Linux installations?
+   Recommendation: Start with Windows (primary user base), consider cross-platform 
+   packaging (PyInstaller supports all platforms) in future versions
+
+5. Enterprise deployment:
+   Should we create MSI installer for Group Policy deployment?
+   Recommendation: Start with Inno Setup EXE, create MSI if enterprise deployment 
+   is required
+
+================================================================================
+END OF REQUIREMENTS
+================================================================================
