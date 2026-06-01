@@ -52,6 +52,10 @@ python src/main.py
      - MS365 List Name (with .ms365 suffix)
      - File Path
    - Summary statistics show totals at bottom
+   - **Automatically excludes:**
+     - Phone number lists (e.g., `9876543210@domain.org`)
+     - Lists with no matching members (when domain filter is applied)
+   - Check console output for skip statistics
 
 6. **View Details** (Optional)
    - Select a row in the results table
@@ -85,6 +89,13 @@ The project includes sample distribution lists in `tests/tempmail/`:
 3. Click "Scan Distribution Lists"
 4. Should find only Gmail addresses
 
+### Test Scenario 3: Automatic Filtering
+1. Create test files with phone number names (e.g., `9876543210@domain.org`)
+2. Set Domain Filter to exclude some lists
+3. Click "Scan Distribution Lists"
+4. Console shows skipped phone numbers and empty lists
+5. Only valid lists with matches are included
+
 ## JSON Export Format
 
 The exported JSON file contains:
@@ -102,9 +113,25 @@ The exported JSON file contains:
       "original_name": "distribution.list1@example.org",
       "ms365_name": "distribution.list1.ms365@example.org",
       "file_path": "C:/path/to/distribution.list1@example.org",
-      "matched_emails": ["user1@gmail.com", "user2@gmail.com"],
+      "matched_emails": ["user_1@gmail.com", "user.2@gmail.com"],
       "all_members_count": 10,
-      "matched_count": 2
+      "matched_count": 2,
+      "metadata": [
+        {
+          "email": "user_1@gmail.com",
+          "first_name": "user1",
+          "last_name": "gmail",
+          "display_name": "user1 gmail",
+          "description": "External contact - gmail.com"
+        },
+        {
+          "email": "user.2@gmail.com",
+          "first_name": "user2",
+          "last_name": "gmail",
+          "display_name": "user2 gmail",
+          "description": "External contact - gmail.com"
+        }
+      ]
     }
   ],
   "summary": {
@@ -115,6 +142,12 @@ The exported JSON file contains:
   }
 }
 ```
+
+**Important Notes**:
+- `matched_emails`: Raw email addresses with all original characters (periods, underscores, etc.)
+- `metadata[].email`: Same raw email address used for MS365 import
+- `metadata[].first_name`: Processed name with periods/underscores removed for display
+- Phase 2 uses raw emails for actual addresses, processed names for contact display names
 
 ## Troubleshooting
 
@@ -136,6 +169,15 @@ The exported JSON file contains:
 - Check that .org files contain `MAILINGLIST` directive
 - Verify email format is valid
 - Check domain filter spelling
+- Review console output for skip reasons:
+  - Phone number lists are automatically excluded (7-15 digit patterns)
+  - Lists with no matching members are skipped when using domain filters
+
+### Some Lists Not Appearing
+- Check console output for:
+  - "Phone number lists skipped: X" - Lists like `9876543210@domain.org`
+  - "Empty lists skipped (no matches): X" - Lists with zero matching members
+- Phone number pattern: 7-15 consecutive digits as list name local part
 
 ## User Preferences
 
