@@ -12,9 +12,13 @@ This tool automates the migration of distribution lists and email addresses from
 
 - **Phase 1: Extract & Analyze**
   - Scan Mailkeeper distribution list files (.org format)
+  - Parallel processing for fast scanning (4000+ files)
   - Filter emails by domain(s)
-  - Export migration data as JSON
+  - Automatically skip phone number distribution lists (7-15 digit patterns)
+  - Automatically skip empty lists with no matching members
+  - Export migration data as JSON with metadata
   - Preview distribution lists and matched emails
+  - Console logging with detailed statistics
 
 - **Phase 2: MS365 Export**
   - Import MS365 credentials securely (no hardcoded credentials)
@@ -148,6 +152,9 @@ Phase 3: Mailkeeper Cleanup
 **Output**: Migration JSON file containing:
 - Migration configuration
 - Distribution lists with matched emails
+- **Contact metadata** (processed names for MS365 import)
+- Summary statistics
+- Skipped items count (phone numbers, empty lists)
 - Summary statistics
 
 ### Phase 2: MS365 Export

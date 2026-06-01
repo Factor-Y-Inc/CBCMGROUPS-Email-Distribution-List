@@ -5,6 +5,7 @@ Scan Mailkeeper distribution lists and export to JSON.
 
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
@@ -35,12 +36,36 @@ class ScanWorker(QThread):
         self.folder_path = folder_path
         self.domain_filter = domain_filter
         self.max_workers = max_workers
+        self.skipped_phone_numbers = 0
+        self.skipped_empty_lists = 0
+    
+    def _is_phone_number_list(self, list_name: str) -> bool:
+        """Check if the list name appears to be a phone number.
+        
+        Examples:
+            7034019078@cbcmgroups.org -> True
+            1234567890@domain.org -> True
+            team.contacts@domain.org -> False
+        """
+        # Extract local part (before @)
+        local_part = list_name.split('@')[0] if '@' in list_name else list_name
+        
+        # Check if it's all digits and looks like a phone number (7-15 digits)
+        if re.match(r'^\d{7,15}$', local_part):
+            return True
+        
+        return False
         
     def _parse_single_file(self, org_file: Path, domains: List[str]) -> Optional[Dict]:
         """Parse a single .org file. Returns result dict or None if error."""
         try:
             parser = MailkeeperParser()
             parsed = parser.parse_file(str(org_file))
+            
+            # Skip phone number distribution lists
+            if self._is_phone_number_list(parsed["list_name"]):
+                self.skipped_phone_numbers += 1
+                return None
             
             # Filter emails by domain if specified
             if domains:
@@ -50,6 +75,11 @@ class ScanWorker(QThread):
                 ]
             else:
                 matched_emails = parsed["emails"]
+            
+            # Skip lists with no matching members
+            if len(matched_emails) == 0:
+                self.skipped_empty_lists += 1
+                return None
             
             # Generate MS365 list name
             original_name = parsed["list_name"]
@@ -134,6 +164,10 @@ class ScanWorker(QThread):
             print(f"Scan complete!")
             print(f"Total files scanned: {total_files}")
             print(f"Distribution lists found: {len(results)}")
+            if self.skipped_phone_numbers > 0:
+                print(f"Phone number lists skipped: {self.skipped_phone_numbers}")
+            if self.skipped_empty_lists > 0:
+                print(f"Empty lists skipped (no matches): {self.skipped_empty_lists}")
             if results:
                 total_members = sum(r['all_members_count'] for r in results)
                 total_matched = sum(r['matched_count'] for r in results)
@@ -473,7 +507,18 @@ class Phase1Widget(QWidget):
                         "file_path": r["file_path"],
                         "matched_emails": r["matched_emails"],
                         "all_members_count": r["all_members_count"],
-                        "matched_count": r["matched_count"]
+                        "matched_count": r["matched_count"],
+                        "metadata": [
+                            {
+                                "email": m.email,
+                                "first_name": m.first_name,
+                                "last_name": m.last_name,
+                                "display_name": m.display_name,
+                                "description": m.description
+                            }
+                            for m in r["metadata"]
+                            if m.email in r["matched_emails"]
+                        ]
                     }
                     for r in self.results
                 ],

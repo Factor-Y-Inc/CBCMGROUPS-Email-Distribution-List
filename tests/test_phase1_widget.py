@@ -90,6 +90,24 @@ class TestPhase1Widget:
 class TestScanWorker:
     """Tests for ScanWorker background thread."""
     
+    def test_phone_number_detection(self):
+        """Test phone number list detection."""
+        worker = ScanWorker("", "", max_workers=2)
+        
+        # Phone numbers - should be detected
+        assert worker._is_phone_number_list("9876543210@example.org") is True
+        assert worker._is_phone_number_list("1234567890@domain.org") is True
+        assert worker._is_phone_number_list("5551234567@example.com") is True
+        assert worker._is_phone_number_list("12345678901@test.org") is True  # 11 digits
+        
+        # Not phone numbers - should not be detected
+        assert worker._is_phone_number_list("team.contacts@example.org") is False
+        assert worker._is_phone_number_list("distribution.list1@example.org") is False
+        assert worker._is_phone_number_list("vendor.list@example.org") is False
+        assert worker._is_phone_number_list("abc123@example.org") is False  # Mixed
+        assert worker._is_phone_number_list("123@example.org") is False  # Too short
+        assert worker._is_phone_number_list("12345678901234567@example.org") is False  # Too long
+    
     def test_ms365_name_generation(self):
         """Test MS365 name generation."""
         worker = ScanWorker("", "", max_workers=2)
@@ -133,6 +151,89 @@ class TestScanWorker:
         assert "user1@gmail.com" in result["matched_emails"]
         assert "user2@gmail.com" in result["matched_emails"]
         assert "user3@example.com" not in result["matched_emails"]
+    
+    def test_skip_phone_number_lists(self, tmp_path):
+        """Test that phone number distribution lists are skipped."""
+        # Create a regular distribution list
+        regular_file = tmp_path / "team.contacts@example.org"
+        regular_file.write_text(
+            "MAILINGLIST team.contacts@example.org\n"
+            "user1@example.org\n"
+            "user2@example.org\n"
+        )
+        
+        # Create phone number distribution lists
+        phone_file1 = tmp_path / "9876543210@example.org"
+        phone_file1.write_text(
+            "MAILINGLIST 9876543210@example.org\n"
+            "user3@example.org\n"
+        )
+        
+        phone_file2 = tmp_path / "5551234567@test.org"
+        phone_file2.write_text(
+            "MAILINGLIST 5551234567@test.org\n"
+            "user4@example.org\n"
+        )
+        
+        # Create worker
+        worker = ScanWorker(str(tmp_path), "", max_workers=2)
+        
+        # Collect results
+        results = []
+        worker.finished.connect(lambda r: results.extend(r))
+        
+        # Run worker
+        worker.run()
+        
+        # Verify only the regular list was included
+        assert len(results) == 1
+        assert results[0]["original_name"] == "team.contacts@example.org"
+        
+        # Verify phone number lists were skipped
+        assert worker.skipped_phone_numbers == 2
+    
+    def test_skip_empty_lists(self, tmp_path):
+        """Test that distribution lists with no matching members are skipped."""
+        # Create a list with matching members
+        matching_file = tmp_path / "team.contacts@example.org"
+        matching_file.write_text(
+            "MAILINGLIST team.contacts@example.org\n"
+            "user1@gmail.com\n"
+            "user2@gmail.com\n"
+        )
+        
+        # Create lists with no matching members (when filtering for gmail.com)
+        empty_file1 = tmp_path / "vendor.list@example.org"
+        empty_file1.write_text(
+            "MAILINGLIST vendor.list@example.org\n"
+            "contact1@yahoo.com\n"
+            "contact2@outlook.com\n"
+        )
+        
+        empty_file2 = tmp_path / "partners@example.org"
+        empty_file2.write_text(
+            "MAILINGLIST partners@example.org\n"
+            "partner1@company.com\n"
+            "partner2@vendor.com\n"
+        )
+        
+        # Create worker with domain filter
+        worker = ScanWorker(str(tmp_path), "gmail.com", max_workers=2)
+        
+        # Collect results
+        results = []
+        worker.finished.connect(lambda r: results.extend(r))
+        
+        # Run worker
+        worker.run()
+        
+        # Verify only the list with matching members was included
+        assert len(results) == 1
+        assert results[0]["original_name"] == "team.contacts@example.org"
+        assert results[0]["matched_count"] == 2
+        
+        # Verify empty lists were skipped
+        assert worker.skipped_empty_lists == 2
 
 
 class TestIntegrationPhase1:
