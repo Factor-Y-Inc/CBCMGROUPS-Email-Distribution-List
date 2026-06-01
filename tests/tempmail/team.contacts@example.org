@@ -1,0 +1,11 @@
+MAILINGLIST team.contacts@example.org
+DELAYGREYLIST
+NOTSENDER
+
+john.smith@external.com
+mary.johnson@partner.net
+robert.williams@mail.service.org
+sarah.brown@organization.com
+
+# Historical members
+!ALIAS james.davis@oldcompany.com
