@@ -10,7 +10,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
-from PyQt5.QtGui import QIcon
 
 from config.settings import APP_NAME, APP_VERSION
 from ui.phase1_widget import Phase1Widget
